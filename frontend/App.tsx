@@ -18,7 +18,9 @@ import {
   Tv,
   Wifi,
   Sparkles,
-  Film
+  Film,
+  Bot,
+  UserCircle2
 } from 'lucide-react';
 import { WordItem, SentenceItem, QuizItem } from './types';
 
@@ -34,12 +36,14 @@ const App: React.FC = () => {
   const [xp, setXp] = useState<number>(75);
   const [streak, setStreak] = useState<number>(5);
   const [selectedShow, setSelectedShow] = useState<string | 'ALL'>('ALL');
+  const [wordSourceFilter, setWordSourceFilter] = useState<'all' | 'user' | 'ai'>('all');
 
   // --- 동적 데이터 (TV 연동) ---
   const [words, setWords] = useState<WordItem[]>([
-    { id: 1, word: 'Serendipity', meaning: '뜻밖의 발견, 운 좋은 우연', favorite: false, level: 'B2', showName: 'Emily in Paris' },
-    { id: 2, word: 'Resilient', meaning: '회복력 있는, 탄력 있는', favorite: true, level: 'C1', showName: 'Stranger Things' },
-    { id: 3, word: 'Persistent', meaning: '끈기 있는, 집요한', favorite: false, level: 'B1', showName: 'Stranger Things' },
+    { id: 1, word: 'Serendipity', meaning: '뜻밖의 발견, 운 좋은 우연', favorite: false, level: 'B2', showName: 'Emily in Paris', source: 'user' },
+    { id: 2, word: 'Resilient', meaning: '회복력 있는, 탄력 있는', favorite: true, level: 'C1', showName: 'Stranger Things', source: 'ai' },
+    { id: 3, word: 'Persistent', meaning: '끈기 있는, 집요한', favorite: false, level: 'B1', showName: 'Stranger Things', source: 'user' },
+    { id: 4, word: 'Eloquent', meaning: '유창한, 설득력 있는', favorite: false, level: 'C2', showName: 'The Crown', source: 'ai' },
   ]);
   const [quizList, setQuizList] = useState<QuizItem[]>([]);
 
@@ -61,9 +65,14 @@ const App: React.FC = () => {
     }
   ];
 
-  // --- 파생 데이터 (콘텐츠 필터링) ---
+  // --- 파생 데이터 (콘텐츠 및 소스 필터링) ---
   const uniqueShows = Array.from(new Set(words.map(w => w.showName).filter(Boolean))) as string[];
-  const filteredWords = selectedShow === 'ALL' ? words : words.filter(w => w.showName === selectedShow);
+  
+  const filteredWords = words.filter(w => {
+    const showMatch = selectedShow === 'ALL' || w.showName === selectedShow;
+    const sourceMatch = wordSourceFilter === 'all' || w.source === wordSourceFilter;
+    return showMatch && sourceMatch;
+  });
 
   // --- 소켓 연결 ---
   useEffect(() => {
@@ -87,10 +96,11 @@ const App: React.FC = () => {
       favorite: false,
       context: 'A seamless AI agent turning watching into learning.',
       showName: 'Samsung Unpacked',
+      source: 'user' // 시연용은 사용자가 저장한 것으로 가정
     };
     setWords((prev) => [mockWord, ...prev]);
-    // 방금 추가된 콘텐츠 탭으로 자동 이동 (선택적)
     setSelectedShow('ALL');
+    setWordSourceFilter('all');
   };
 
   const simulateQuizGen = () => {
@@ -294,9 +304,39 @@ const App: React.FC = () => {
                 </div>
               )}
 
+              {/* --- Source Filter (User vs AI) --- */}
+              <div className="px-1 mt-4 mb-2">
+                <div className="bg-slate-200/50 p-1 rounded-xl flex relative">
+                  <button 
+                    className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all duration-300 z-10 flex items-center justify-center gap-1 ${
+                      wordSourceFilter === 'all' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                    onClick={() => setWordSourceFilter('all')}
+                  >
+                    전체 단어
+                  </button>
+                  <button 
+                    className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all duration-300 z-10 flex items-center justify-center gap-1 ${
+                      wordSourceFilter === 'user' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                    onClick={() => setWordSourceFilter('user')}
+                  >
+                    <UserCircle2 size={12} /> 내가 저장한 단어
+                  </button>
+                  <button 
+                    className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all duration-300 z-10 flex items-center justify-center gap-1 ${
+                      wordSourceFilter === 'ai' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                    onClick={() => setWordSourceFilter('ai')}
+                  >
+                    <Bot size={12} /> AI 추천 단어
+                  </button>
+                </div>
+              </div>
+
               <div className="flex justify-between items-center px-1 mb-1 mt-2">
                 <h2 className="font-extrabold text-slate-800 text-base">
-                  {selectedShow === 'ALL' ? '전체 단어' : `'${selectedShow}' 단어`}
+                  {selectedShow === 'ALL' ? '목록' : `'${selectedShow}'`}
                   <span className="ml-1.5 text-indigo-500 text-sm">{filteredWords.length}</span>
                 </h2>
                 <button className="bg-white text-[10px] font-bold text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1 shadow-sm">
@@ -307,7 +347,7 @@ const App: React.FC = () => {
               <div className="space-y-3">
                 {filteredWords.length === 0 ? (
                   <div className="text-center py-10 text-slate-400 text-sm font-medium">
-                    해당 콘텐츠에서 추출된 단어가 없습니다.
+                    조건에 맞는 단어가 없습니다.
                   </div>
                 ) : (
                   filteredWords.map(item => (
@@ -318,7 +358,19 @@ const App: React.FC = () => {
                             {item.level || 'New'}
                           </div>
                           <div className="truncate">
-                            <div className="text-[16px] font-bold text-slate-900 truncate">{item.word}</div>
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <div className="text-[16px] font-bold text-slate-900 truncate">{item.word}</div>
+                              {/* Source Badge */}
+                              {item.source === 'ai' ? (
+                                <span className="bg-purple-50 text-purple-600 text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                                  <Bot size={8} /> AI 추천
+                                </span>
+                              ) : item.source === 'user' ? (
+                                <span className="bg-indigo-50 text-indigo-600 text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                                  <UserCircle2 size={8} /> 직접 저장
+                                </span>
+                              ) : null}
+                            </div>
                             <div className="text-[12px] text-slate-500 font-medium truncate">{item.meaning}</div>
                           </div>
                         </div>

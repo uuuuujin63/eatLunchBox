@@ -6,6 +6,7 @@ export interface WordItem {
   level?: string;
   context?: string;
   showName?: string;
+  source?: 'user' | 'ai';
 }
 
 export interface SentenceItem {
